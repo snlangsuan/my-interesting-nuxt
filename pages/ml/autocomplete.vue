@@ -279,6 +279,11 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: 'Auto-Complete'
+    }
+  },
   mounted() {
     // this.$nextTick(() => {
     //   console.log(this.$refs.trainCard)
