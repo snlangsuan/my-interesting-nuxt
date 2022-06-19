@@ -1,0 +1,16 @@
+.custom-app-bar {
+  &#{&}--white.v-toolbar,
+  &.v-toolbar {
+    box-shadow: none !important;
+    border-bottom: thin solid rgba(0, 0, 0, 0.12) !important;
+
+    > .v-toolbar__content {
+      border: none !important;
+    }
+  }
+
+  &#{&}--white.v-toolbar {
+    background-color: #ffffff !important;
+  }
+}
+
