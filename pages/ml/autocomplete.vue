@@ -566,7 +566,7 @@ export default {
         }
         let features = [val].map((x) => this.processText(x)).filter((x) => !!x)
         // console.log(features)
-        if (features.length < 1) return
+        if (features.length < 4) return
         features = features.map((x) => this.textToNumber(x, this.predictMaxLen, this.char2int))
         features = this.parseOneHotEncoding(features, this.predictMaxLen, this.ALPHA_LEN)
         let pred = this.predictModel.predict(features)
