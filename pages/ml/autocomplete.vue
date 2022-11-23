@@ -377,7 +377,9 @@ export default {
       return text
     },
     generateCharacterMap(texts) {
-      const chars = Array.from(new Set(texts.join('').split(''))).sort()
+      // eslint-disable-next-line no-useless-escape
+      const pattern = /[\[\]]/ig
+      const chars = ['[', ']'].concat(Array.from(new Set(texts.join('').replace(pattern, '').split(''))).sort())
       const int2char = chars.reduce((list, x, i) => {
         list[i+1] = x
         return list
@@ -507,11 +509,13 @@ export default {
         this.canPreview = false
         this.predictModel && this.predictModel.dispose()
         await this.timeout(100)
-        const textProcessed = this.datasetList.map((x) => this.processText(x)).filter((x) => !!x)
+        const textProcessed = this.datasetList.map((x) => ['[', ...this.processText(x), ']']).filter((x) => !!x)
         // console.log('input', textProcessed)
         const maxLen = Number(this.params.maxLen)
         this.predictMaxLen = maxLen
         const [int2char, char2int] = this.generateCharacterMap(textProcessed)
+        console.log(int2char)
+        console.log(char2int)
         this.int2char = { ...int2char }
         this.char2int = { ...char2int }
         window.localStorage.setItem('autocorrect:char2int', JSON.stringify(this.char2int))
