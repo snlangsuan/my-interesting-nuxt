@@ -8,7 +8,7 @@
         class="upload-field__input"
         alt=""
         title=""
-        accept="image/png,image/jpg"
+        :accept="accept"
         @input="onChangeImage"
       />
       <div v-if="localValue" class="upload-field__img">
@@ -18,10 +18,10 @@
         <v-img :src="url" class="grey lighten-4" width="100%" height="100%" contain></v-img>
       </div>
       <div v-else :class="['upload-field__text']">
-        <v-icon color="#1aa24e" size="48">mdi-image-plus</v-icon>
+        <!-- <v-icon color="#1967d2" size="48">mdi-image-plus</v-icon> -->
         <div class="mx-auto mt-4">
-          <v-icon color="#1aa24e" size="18" left>mdi-tray-arrow-up</v-icon>
-          <span class="text-body-2" style="color: #1aa24e">{{ addText }}</span>
+          <v-icon color="#1967d2" size="18" left>mdi-tray-arrow-up</v-icon>
+          <span class="text-body-2" style="color: #1967d2">{{ addText }}</span>
         </div>
       </div>
       <!-- <div class="upload-field__img">
@@ -74,6 +74,10 @@ export default {
     removeText: {
       type: String,
       default: 'นำออก'
+    },
+    accept: {
+      type: String,
+      default: 'image/png,image/jpg'
     }
   },
   data() {
@@ -127,7 +131,12 @@ export default {
       this.url = ''
       this.localValue = ''
       this.originalFile = null
+      this.errorBucket = []
       this.$emit('input', this.localValue)
+    },
+    resetValidation() {
+      this.valid = true
+      this.errorBucket = []
     },
     getOriginalFile() {
       return this.originalFile
@@ -180,7 +189,7 @@ export default {
 .upload-field {
   position: relative;
   &__wrap {
-    border: thin dashed rgba(26, 162, 78) !important;
+    border: thin dashed #1967d2 !important;
     border-radius: 4px;
     padding: 8px;
     display: flex;
@@ -188,9 +197,9 @@ export default {
     cursor: pointer;
     position: relative;
     margin-bottom: 4px;
-    width: 240px;
+    width: 100%;
     height: 240px;
-    background-color: #f2faf5;
+    background-color: #E8F0FE;
     overflow: hidden;
   }
 
