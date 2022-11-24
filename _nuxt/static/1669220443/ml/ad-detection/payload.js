@@ -1,1 +1,0 @@
-__NUXT_JSONP__("/ml/ad-detection", {data:[{}],fetch:{},mutations:void 0});

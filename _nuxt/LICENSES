@@ -1,15 +1,24 @@
 /*!
- * @kurkle/color v0.2.1
- * https://github.com/kurkle/color#readme
- * (c) 2022 Jukka Kurkela
- * Released under the MIT License
- */
+  * vue-router v3.5.4
+  * (c) 2022 Evan You
+  * @license MIT
+  */
 
 /*!
- * Chart.js v3.8.0
- * https://www.chartjs.org
- * (c) 2022 Chart.js Contributors
- * Released under the MIT License
+ * Vue.js v2.6.14
+ * (c) 2014-2021 Evan You
+ * Released under the MIT License.
+ */
+
+
+/*!
+ * Compressor.js v1.1.1
+ * https://fengyuanchen.github.io/compressorjs
+ *
+ * Copyright 2018-present Chen Fengyuan
+ * Released under the MIT license
+ *
+ * Date: 2021-10-05T02:32:40.212Z
  */
 
 
@@ -312,6 +321,11 @@
  */
 
 /*!
+ * vue-konva v3.0.1 - https://github.com/konvajs/vue-konva#readme
+ * MIT Licensed
+ */
+
+/*!
  * vue-no-ssr v1.1.1
  * (c) 2018-present egoist <0x142857@gmail.com>
  * Released under the MIT License.
@@ -319,24 +333,15 @@
 
 
 /*!
- * Compressor.js v1.1.1
- * https://fengyuanchen.github.io/compressorjs
- *
- * Copyright 2018-present Chen Fengyuan
- * Released under the MIT license
- *
- * Date: 2021-10-05T02:32:40.212Z
+ * @kurkle/color v0.2.1
+ * https://github.com/kurkle/color#readme
+ * (c) 2022 Jukka Kurkela
+ * Released under the MIT License
  */
 
-
 /*!
-  * vue-router v3.5.4
-  * (c) 2022 Evan You
-  * @license MIT
-  */
-
-/*!
- * Vue.js v2.6.14
- * (c) 2014-2021 Evan You
- * Released under the MIT License.
+ * Chart.js v3.8.0
+ * https://www.chartjs.org
+ * (c) 2022 Chart.js Contributors
+ * Released under the MIT License
  */
