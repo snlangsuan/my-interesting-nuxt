@@ -1,1 +1,0 @@
-__NUXT_JSONP__("/ml/autocomplete", {data:[{}],fetch:{},mutations:void 0});

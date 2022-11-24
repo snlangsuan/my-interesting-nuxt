@@ -12,17 +12,6 @@
 
 
 /*!
- * Compressor.js v1.1.1
- * https://fengyuanchen.github.io/compressorjs
- *
- * Copyright 2018-present Chen Fengyuan
- * Released under the MIT license
- *
- * Date: 2021-10-05T02:32:40.212Z
- */
-
-
-/*!
  * The buffer module from node.js, for the browser.
  *
  * @author   Feross Aboukhadijeh <http://feross.org>
@@ -315,13 +304,24 @@
 
 
 /*!
+ * Compressor.js v1.1.1
+ * https://fengyuanchen.github.io/compressorjs
+ *
+ * Copyright 2018-present Chen Fengyuan
+ * Released under the MIT license
+ *
+ * Date: 2021-10-05T02:32:40.212Z
+ */
+
+
+/*!
  * vue-client-only v0.0.0-semantic-release
  * (c) 2021-present egoist <0x142857@gmail.com>
  * Released under the MIT License.
  */
 
 /*!
- * vue-konva v3.0.1 - https://github.com/konvajs/vue-konva#readme
+ * vue-konva v2.1.7 - https://github.com/konvajs/vue-konva#readme
  * MIT Licensed
  */
 
