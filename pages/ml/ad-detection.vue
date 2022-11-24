@@ -30,13 +30,13 @@
         <v-card-title>Preview</v-card-title>
         <v-divider />
         <v-card-text v-if="databases.length > 0 && !isPreviewUploaded">
-          <upload-image-field ref="upload_test" v-model="testImg" add-text="คลิกหรือลากวาง" accept="image/jpeg" style="width: 100%" hide-details @change="handleOnUploadTest" />
+          <upload-image-field ref="upload_test" v-model="testImg" add-text="Click to upload" accept="image/jpeg" style="width: 100%" hide-details @change="handleOnUploadTest" />
         </v-card-text>
         <v-card-text v-else-if="isPreviewUploaded">
           <div class="ad-detection-workspace">
             <div class="ad-detection-workspace__canvas">
               <!-- <canvas id="workspace_canvas"></canvas> -->
-              <bounding-box-canvas :width="canvasWidth" :height="canvasHeight" />
+              <bounding-box-canvas :src="testImg" :width="canvasWidth" :height="canvasHeight" />
             </div>
             <div class="ad-detection-workspace__output"></div>
           </div>
@@ -52,7 +52,7 @@
         <v-card-text>
           <v-form ref="database_form" v-model="createDatabaseValid" @submit.prevent>
             <v-text-field v-model="createDatabase.label" label="Label" :rules="[(x) => !!x || 'Enter label name']" dense outlined />
-            <upload-image-field ref="upload_database" v-model="createDatabase.img" :rules="[(x) => !!x || 'Enter image']" add-text="คลิกหรือลากวาง" accept="image/jpeg" style="width: 100%" />
+            <upload-image-field ref="upload_database" v-model="createDatabase.img" :rules="[(x) => !!x || 'Enter image']" add-text="Click to upload" accept="image/jpeg" style="width: 100%" />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -190,41 +190,11 @@ export default {
 
     handleOnUploadTest(base64, file) {
       this.isPreviewUploaded = true
-      this.$nextTick(() => {
-        const canvas = document.getElementById('workspace_canvas')
-        const context = canvas.getContext('2d')
-        const image = new Image()
-        image.onload = () => {
-          this.testOriginalSize.w = image.width
-          this.testOriginalSize.h = image.height
-          // canvas.style.width = image.width
-          // canvas.style.height = image.height
-          const size = this.calculateAspectRatioFit(image.width, image.height, this.canvasWidth, this.canvasHeight)
-          console.log(size, this.canvasWidth, this.canvasHeight)
-          // image.width = size.width
-          // image.height = size.height
-          // console.log(this.canvasWidth, image.width)
-          // image.width = this.canvasHeight
-          // image.height = this.canvasHeight
-          // console.log(this.canvasWidth, image.width)
-          // if (image.width >= image.height) this.resizeImageWidth(image)
-          // else this.resizeImageHeight(image)
-          const factor  = Math.min(size.width / image.width, size.height / image.height)
-          context.scale(factor, factor)
-          context.drawImage(image, 0, 0)
-          context.scale(1 / factor, 1 / factor)
-          canvas.style.width = size.width + 'px'
-          canvas.style.height = size.height + 'px'
-        }
-        image.src = base64
-      })
+      this.testImg = base64
+      this.findAd(base64.split(',')[1])
     },
-    calculateAspectRatioFit(srcWidth, srcHeight, maxWidth, maxHeight) {
-      const ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight)
-      return {
-        width: srcWidth * ratio,
-        height: srcHeight * ratio
-      }
+    findAd(image) {
+      console.log(image)
     }
   },
 }
