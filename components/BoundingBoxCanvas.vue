@@ -66,6 +66,10 @@ export default {
     },
     bboxes(val) {
       this.loadBox(val)
+    },
+    width(val) {
+      this.updateStageSize()
+      // this.loadBox(this.bboxes)
     }
   },
   mounted() {
@@ -77,17 +81,11 @@ export default {
       if (!base64) return
       const image = new Image()
       image.onload = () => {
-        console.log('image size:', image.width, image.height)
-        const factor  = Math.min(this.width / image.width, this.height / image.height)
-        this.imageFactor = factor
-        const size = this.calculateAspectRatioFit(image.width, image.height, this.width, this.height)
-        this.stageConfig.width = size.width
-        this.stageConfig.height = size.height
-        this.stageConfig.scaleX = 1 * factor
-        this.stageConfig.scaleY = 1 * factor
+        // console.log('image size:', image.width, image.height)
         this.imageConfig.image = image
         this.imageConfig.width = image.width
         this.imageConfig.height = image.height
+        this.updateStageSize()
       }
       image.src = base64
     },
@@ -104,8 +102,18 @@ export default {
         strokeWidth: 5,
         opacity: 0.6,
       }))
-      console.log(items)
+      // console.log(items)
       this.shapes = items
+    },
+    updateStageSize() {
+      // const image = this.imageConfig.image
+      const factor  = Math.min(this.width / this.imageConfig.width, this.height / this.imageConfig.height)
+      this.imageFactor = factor
+      const size = this.calculateAspectRatioFit(this.imageConfig.width, this.imageConfig.height, this.width, this.height)
+      this.stageConfig.width = size.width
+      this.stageConfig.height = size.height
+      this.stageConfig.scaleX = 1 * factor
+      this.stageConfig.scaleY = 1 * factor
     },
     calculateAspectRatioFit(srcWidth, srcHeight, maxWidth, maxHeight) {
       const ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight)

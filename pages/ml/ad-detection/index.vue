@@ -68,13 +68,13 @@
           <upload-image-field ref="upload_test" v-model="testImg" add-text="Click to upload" accept="image/jpeg" style="width: 100%" @change="handleOnUploadPreview" />
         </v-card-text>
         <v-card-text v-else-if="isPreviewUploaded">
-          <div class="ad-detection-workspace">
+          <div class="ad-detection-workspace" :style="{ display: screenWidth > 560 ? 'flex' : 'block' }">
             <div class="ad-detection-workspace__canvas">
               <!-- <canvas id="workspace_canvas"></canvas> -->
               <bounding-box-canvas ref="image_canvas" :src="testImg" :bboxes="bboxes" :width="canvasWidth" :height="canvasHeight" />
             </div>
             <div class="ad-detection-workspace__output">
-              <div v-if="!testUploading" class="ad-detection-results" :style="{ maxHeight: canvasHeight + 'px' }">
+              <div v-if="!testUploading" :class="['ad-detection-results', { 'pl-4': screenWidth > 560 }]" :style="{ maxHeight: canvasHeight + 'px' }">
                 <div class="ad-detection-results__title">Predictions</div>
                 <div class="ad-detection-results__subtitle" style="margin-bottom: 8px">{{ bboxes.length }} objects</div>
                 <template v-for="(item, i) in bboxes">
@@ -216,6 +216,7 @@ export default {
       testUploading: false,
       isPreviewUploaded: false,
       embeddingModel: null,
+      screenWidth: 100,
       canvasWidth: 100,
       canvasHeight: 100,
       testImg: null,
@@ -275,9 +276,11 @@ export default {
     },
     onResize() {
       const workspaceElem = document.querySelector('#workspace')
+      this.screenWidth = window.innerWidth
       if (workspaceElem) {
         const workspaceWidth = workspaceElem.offsetWidth - 32
-        this.canvasWidth = Math.round(workspaceWidth * 0.6)
+        const percent = this.screenWidth > 560 ? 0.6 : 1
+        this.canvasWidth = Math.round(workspaceWidth * percent)
         this.canvasHeight = this.canvasWidth
       }
       // const bodyWidth = window.innerWidth
@@ -394,6 +397,7 @@ export default {
         const item = embedded[i]
         // const idx = labels[i]
         const cosim = cosineSimilarity(item, sample)
+        // console.log(cosim, this.queryDatabase(labels[i]))
         if (cosim > maxVal) {
           maxIdx = labels[i]
           maxVal = cosim
@@ -440,7 +444,7 @@ export default {
     },
     async getModelVersion() {
       try {
-        const result = await this.$axios.$get('https://ad-detection-service-bxltsvmqda-as.a.run.app')
+        const result = await this.$axios.$get('https://storage.googleapis.com/demo-ml-model/detection-offline-ad/version.json')
         const current = localStorage.getItem('detection-offline-ad-version')
 
         if (current !== result.version) {
@@ -597,7 +601,7 @@ export default {
   &-results {
     overflow: hidden;
     overflow-y: auto;
-    margin-left: 16px;
+    // margin-left: 16px;
 
     &__title {
       font-size: 1.1rem;
