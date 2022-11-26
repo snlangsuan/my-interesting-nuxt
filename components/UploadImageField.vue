@@ -1,51 +1,35 @@
 <template>
-  <div class="upload-field">
-    <div :class="['upload-field__wrap', { 'upload-field--error': !valid, 'upload-field--disabled': disabled }]" @click="onToggleAction">
-      <input
-        v-show="false"
-        ref="picture_upload"
-        type="file"
-        class="upload-field__input"
-        alt=""
-        title=""
-        :accept="accept"
-        @input="onChangeImage"
-      />
-      <div v-if="localValue" class="upload-field__img">
-        <v-img :src="localValue" class="grey lighten-4" width="100%" height="100%" contain></v-img>
-      </div>
-      <div v-else-if="src">
-        <v-img :src="url" class="grey lighten-4" width="100%" height="100%" contain></v-img>
-      </div>
-      <div v-else :class="['upload-field__text']">
-        <!-- <v-icon color="#1967d2" size="48">mdi-image-plus</v-icon> -->
-        <div class="mx-auto mt-4">
-          <v-icon color="#1967d2" size="18" left>mdi-tray-arrow-up</v-icon>
-          <span class="text-body-2" style="color: #1967d2">{{ addText }}</span>
+  <div :id="id" class="upload-field">
+    <div
+      id="upload_content"
+      :class="['upload-field__content', { 'upload-field--error': !valid, 'upload-field--disabled': disabled }, { 'upload-field-drop': isDragging }]"
+      @drop="handelOnDrop"
+      @dragover="handleDragOver"
+      @dragenter="handelOnDragEnter"
+      @dragleave="handleOnDragLeave"
+    >
+      <input ref="picture_upload" type="file" alt="" title="" :accept="accept" @input="handelOnChangeFile" />
+      <div v-if="localVal" class="upload-field__image">
+        <div class="upload-field__image--remove">
+          <v-icon color="white" @click="handelOnRemove">mdi-delete</v-icon>
         </div>
+        <v-img :src="localVal" class="grey lighten-4" width="100%" height="100%" contain />
       </div>
-      <!-- <div class="upload-field__img">
-        <v-img v-if="localValue" :src="localValue" class="grey lighten-4" max-height="80" contain></v-img>
-        <v-img v-else-if="src" :src="url" class="grey lighten-4" max-height="80" contain></v-img>
-        <v-icon v-else>mdi-image-plus</v-icon>
+      <div v-else-if="isDragging" class="upload-field__drop-zone">
+        <v-avatar color="#1967d2">
+          <v-icon dark>mdi-tray-arrow-up</v-icon>
+        </v-avatar>
+        <div class="mt-4 text-subtitle-1 font-weight-light">Drop your image to here</div>
       </div>
-      <div :class="['upload-field__text']">
-        <div v-if="readonly"></div>
-        <div v-else-if="localValue || url" class="upload-field__remove">
-          <v-icon size="18" left>mdi-delete-outline</v-icon>
-          <span>{{ removeText }}</span>
-        </div>
-        <div v-else>
-          <v-icon size="18" left>mdi-tray-arrow-up</v-icon>
-          <span>{{ addText }}</span>
-        </div>
-      </div> -->
+      <div v-else class="upload-field__normal">
+        <v-icon size="32">mdi-image</v-icon>
+        <div class="text-subtitle-1 font-weight-light">Drag and drop or <div @click="$refs.picture_upload.click()">browse</div></div>
+      </div>
     </div>
     <div :class="['upload-field__details', { 'upload-field__details--hide': hideDetails }]">
       <VMessages v-if="errorBucket.length < 1 && !!hint && (persistentHint || isFocused)" :value="[hint]" />
       <VMessages :value="errorBucket" color="error"/>
     </div>
-    <!-- <div v-if="disabled" class="upload-field__disabled"></div> -->
   </div>
 </template>
 
@@ -63,54 +47,40 @@ export default {
       type: String,
       default: '',
     },
-    src: {
-      type: String,
-      default: '',
-    },
-    addText: {
-      type: String,
-      default: 'เพิ่มภาพ'
-    },
-    removeText: {
-      type: String,
-      default: 'นำออก'
-    },
     accept: {
       type: String,
       default: 'image/png,image/jpg'
-    }
+    },
+    imageMaxDimension: {
+      type: Array,
+      default() {
+        return [640, 640]
+      }
+    },
   },
   data() {
     return {
-      url: '',
-      localValue: '',
-      originalFile: null,
+      localVal: '',
+      original: null,
+      fileCompressor: null,
+      isDragging: false,
+      processing: false
     }
   },
   watch: {
     value(val) {
-      this.localValue = val
+      this.localVal = val
     },
-    src(val) {
-      this.url = val
-    }
   },
   mounted() {
     this.valid = true
-    this.url = this.src
-    this.localValue = this.value
-  },
-  created () {
-    this.form && this.form.register(this)
-  },
-  beforeDestroy () {
-    this.form && this.form.unregister(this)
+    this.localVal = this.value
   },
   methods: {
     validate(force, value) {
       if (!force) return
       const errorBucket = []
-      value = value || this.localValue
+      value = value || this.localVal
       if (force) this.hasInput = this.hasFocused = true
 
       for (const rule of this.rules) {
@@ -128,58 +98,83 @@ export default {
     },
     reset() {
       this.valid = true
-      this.url = ''
-      this.localValue = ''
-      this.originalFile = null
+      this.localVal = ''
+      this.original = null
       this.errorBucket = []
-      this.$emit('input', this.localValue)
+      this.$emit('input', this.localVal)
     },
     resetValidation() {
       this.valid = true
       this.errorBucket = []
     },
-    getOriginalFile() {
-      return this.originalFile
+    getFile() {
+      return this.original
     },
-    onRemove() {
-      if (this.disabled) return
-      this.url = ''
-      this.localValue = ''
-      this.originalFile = null
-      this.$emit('input', this.localValue)
-      this.validate(true, this.localValue)
+    handelOnChangeFile() {
+      this.onConvertImage()
     },
-    onSelectImage() {
-      if (this.disabled) return
-      this.$refs.picture_upload.click()
+    handelOnDrop(e) {
+      e.preventDefault()
+      if (this.disabled || !!this.localVal) return
+      this.isDragging = false
+      const files = e.dataTransfer.files
+      this.$refs.picture_upload.files = files
+      this.onConvertImage()
     },
-    onChangeImage() {
+    handelOnDragEnter(e) {
+      e.preventDefault()
+      if (this.disabled || !!this.localVal) return
+      this.isDragging = true
+    },
+    handleOnDragLeave(e) {
+      if (this.disabled || !!this.localVal) return
+      this.isDragging = false
+    },
+    handleDragOver(e) {
+      if (this.disabled || !!this.localVal) return
+      e.preventDefault()
+    },
+    onConvertImage() {
       const input = this.$refs.picture_upload.files
-      if (input && input[0]) {
-        // eslint-disable-next-line no-unused-vars
-        const file = new Compressor(input[0], { convertSize: 5000000, maxWidth: 1040, success: (result) => {
+      if (!!input && input.length > 0) {
+        const file = input[0]
+        if (file.type !== 'image/jpeg') {
+          this.errorBucket.push('File not support')
+          this.valid = false
+          return
+        }
+        this.processing = true
+        const onSuccess = (result) => {
           const reader = new FileReader()
-          reader.onload = (e) => {
-            this.localValue = e.target.result
-            this.$emit('input', this.localValue)
-            this.$emit('change', this.localValue, result)
-            this.$refs.picture_upload.value = null
-            this.$refs.picture_upload.type = 'text'
-            this.$refs.picture_upload.type = 'file'
-            this.validate(true, this.localValue)
-          }
+          reader.onload = this.onRead
           reader.readAsDataURL(result)
-          this.originalFile = result
-        }})
+          this.original = result
+        }
+        this.fileCompressor = new Compressor(file, {
+          convertSize: 5000000,
+          maxWidth: this.imageMaxDimension[0],
+          maxHeight: this.imageMaxDimension[1],
+          success: onSuccess
+        })
       }
     },
-    onToggleAction() {
-      if (this.readOnly || this.disabled) return
-      // if (this.localValue || this.url) {
-      //   this.onRemove()
-      // } else {
-      this.onSelectImage()
-      // }
+    onRead(e) {
+      console.log('read')
+      this.localVal = e.target.result
+      this.$emit('input', this.localVal)
+      this.$emit('change', this.localVal, this.original)
+      this.$refs.picture_upload.value = null
+      this.$refs.picture_upload.type = 'text'
+      this.$refs.picture_upload.type = 'file'
+      this.validate(true, this.localVal)
+      this.processing = false
+    },
+    handelOnRemove() {
+      this.localVal = ''
+      this.original = null
+      this.$emit('input', this.localVal)
+      this.$emit('change', this.localVal, this.original)
+      this.validate(true, this.localVal)
     }
   }
 }
@@ -188,19 +183,33 @@ export default {
 <style lang="scss" scoped>
 .upload-field {
   position: relative;
-  &__wrap {
+
+  &__content {
     border: thin dashed #1967d2 !important;
     border-radius: 4px;
     padding: 8px;
     display: flex;
     align-items: center;
-    cursor: pointer;
+    justify-content: center;
     position: relative;
     margin-bottom: 4px;
     width: 100%;
     height: 240px;
     background-color: #E8F0FE;
     overflow: hidden;
+    z-index: 99;
+    color: #1967d2 !important;
+
+    & * {
+      pointer-events: none;
+    }
+
+    & > input {
+      display: none;
+    }
+  }
+  &__drop-zone {
+    text-align: center;
   }
 
   &--error {
@@ -233,54 +242,45 @@ export default {
     cursor: auto;
   }
 
-  &__input {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 9;
-    width: 100%;
-    opacity: 0;
+  &:hover &__image--remove  {
+    display: flex;
+    & > * {
+      pointer-events: auto;
+    }
   }
 
-  &__img {
-    // width: 80px;
-    // height: 80px;
+  &__image {
     position: absolute;
     left: 0;
     right: 0;
     top: 0;
     bottom: 0;
+
+    &--remove {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 1;
+      background-color: rgba(0, 0, 0, 0.25);
+      align-items: center;
+      justify-content: center;
+    }
   }
 
-  &__text {
-    flex: 100%;
-    position: relative;
+  &__normal {
     text-align: center;
-  }
-
-  // &__text > * {
-  //   display: flex;
-  //   align-items: center;
-  //   justify-content: center;
-  //   position: absolute;
-  //   top: 0;
-  //   bottom: 0;
-  //   left: 0;
-  //   right: 0;
-  // }
-
-  &--error > &__text > * > * {
-    color: #dd2c00;
-  }
-
-  &__wrap:not(&--disabled) &__remove > * {
-    color: #dd2c00 !important;
-  }
-
-  &__wrap:not(&--error):not(&--disabled):hover > &__text > * > * {
-    color: rgba(26, 162, 78);
+    & > i {
+      color: #1967d2;
+    }
+    & > div > div {
+      display: inline-block;
+      text-decoration: underline;
+      cursor: pointer;
+      pointer-events: auto;
+    }
   }
 }
 </style>

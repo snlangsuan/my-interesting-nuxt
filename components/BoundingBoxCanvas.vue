@@ -102,7 +102,7 @@ export default {
         stroke: x.color,
         fill: x.color,
         strokeWidth: 5,
-        opacity: 0.4,
+        opacity: 0.6,
       }))
       console.log(items)
       this.shapes = items
