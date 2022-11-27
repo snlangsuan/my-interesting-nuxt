@@ -10,11 +10,14 @@
               <v-btn icon v-bind="attrs" v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
             </template>
             <v-list>
-              <v-list-item @click="handleOnSetMinimumConfidence">
-                <v-list-item-title>Set Minimum Confidence</v-list-item-title>
+              <v-list-item @click="handleOnLocalizationThreshold">
+                <v-list-item-title>Localization threshold</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="handleOnClassificationThreshold">
+                <v-list-item-title>Similarity threshold</v-list-item-title>
               </v-list-item>
               <v-list-item :disabled="databases.length < 1" @click="handleOnDeleteDatabase">
-                <v-list-item-title>Delete Database</v-list-item-title>
+                <v-list-item-title class="error--text">Delete Database</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
@@ -52,13 +55,16 @@
         <v-card-title class="py-2">
           <div>Preview</div>
           <v-spacer />
-          <v-menu v-if="databases.length > 0" bottom left>
+          <v-menu v-if="testImg" bottom left>
             <template #activator="{ on, attrs }">
               <v-btn icon v-bind="attrs" v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
             </template>
             <v-list>
+              <v-list-item :disabled="!testImg" @click="handleOnDetectAgain">
+                <v-list-item-title>Detect Again</v-list-item-title>
+              </v-list-item>
               <v-list-item :disabled="!testImg" @click="handleOnDeletePreview">
-                <v-list-item-title>Delete Preview</v-list-item-title>
+                <v-list-item-title class="error--text">Delete Preview</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
@@ -74,7 +80,7 @@
               <bounding-box-canvas ref="image_canvas" :src="testImg" :bboxes="bboxes" :width="canvasWidth" :height="canvasHeight" />
             </div>
             <div class="ad-detection-workspace__output">
-              <div v-if="!testUploading" :class="['ad-detection-results', { 'pl-4': screenWidth > 560 }]" :style="{ maxHeight: canvasHeight + 'px' }">
+              <div v-if="!testUploading" :class="['ad-detection-results', screenWidth > 560 ? 'pl-4' : 'pt-4']" :style="{ maxHeight: canvasHeight + 'px' }">
                 <div class="ad-detection-results__title">Predictions</div>
                 <div class="ad-detection-results__subtitle" style="margin-bottom: 8px">{{ bboxes.length }} objects</div>
                 <template v-for="(item, i) in bboxes">
@@ -133,18 +139,18 @@
         </v-card-text>
       </v-card>
     </v-dialog>
-    <v-dialog v-model="setMinimumConfidenceDialog" max-width="320" persistent>
+    <v-dialog v-model="classificationThresholdDialog" max-width="320" persistent>
       <v-card>
-        <v-card-title>Minimum Confidence</v-card-title>
+        <v-card-title>Classification Threshold</v-card-title>
         <v-card-text class="pb-0">
           <div class="text-h4 font-weight-light">
-            {{ tempMinimumConfidence }}
+            {{ tempClassificationThreshold }}
           </div>
-          <v-slider v-model="tempMinimumConfidence" max="1" min="0" step="0.1" color="primary" track-color="grey" always-dirty hide-details>
+          <v-slider v-model="tempClassificationThreshold" max="1" min="0" step="0.1" color="primary" track-color="grey" always-dirty hide-details>
             <template #prepend>
               <v-icon
                 color="primary"
-                @click="handleOnDecrement"
+                @click="handleOnClassificationDecrement"
               >
                 mdi-minus
               </v-icon>
@@ -153,7 +159,7 @@
             <template #append>
               <v-icon
                 color="primary"
-                @click="handleOnIncrement"
+                @click="handleOnClassificationIncrement"
               >
                 mdi-plus
               </v-icon>
@@ -162,8 +168,42 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="setMinimumConfidenceDialog = false">cancel</v-btn>
-          <v-btn color="primary" text @click="handelOnSaveMinimumConfidence">Save</v-btn>
+          <v-btn text @click="classificationThresholdDialog = false">cancel</v-btn>
+          <v-btn color="primary" text @click="handelOnSaveClassificationThreshold">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="localizationThresholdDialog" max-width="320" persistent>
+      <v-card>
+        <v-card-title>Localization Threshold</v-card-title>
+        <v-card-text class="pb-0">
+          <div class="text-h4 font-weight-light">
+            {{ tempLocalizationThreshold }}
+          </div>
+          <v-slider v-model="tempLocalizationThreshold" max="1" min="0" step="0.1" color="primary" track-color="grey" always-dirty hide-details>
+            <template #prepend>
+              <v-icon
+                color="primary"
+                @click="handleOnLocalizationDecrement"
+              >
+                mdi-minus
+              </v-icon>
+            </template>
+
+            <template #append>
+              <v-icon
+                color="primary"
+                @click="handleOnLocalizationIncrement"
+              >
+                mdi-plus
+              </v-icon>
+            </template>
+          </v-slider>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="localizationThresholdDialog = false">cancel</v-btn>
+          <v-btn color="primary" text @click="handelOnSaveLocalizationThreshold">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -201,8 +241,8 @@ export default {
     return {
       title: 'Offline-advertising Detection',
       loading: {
-        show: false,
-        message: ''
+        show: true,
+        message: 'Getting model version...'
       },
       databases: [],
       uploadDatabaseDialog: false,
@@ -223,10 +263,14 @@ export default {
       bboxes: [],
       knn: null,
       hasProblem: false,
-      setMinimumConfidenceDialog: false,
-      tempMinimumConfidence: 0.7,
-      minimumConfidence: 0.7,
+      classificationThresholdDialog: false,
+      tempClassificationThreshold: 0.7,
+      minimumClassificationThreshold: 0.7,
+      localizationThresholdDialog: false,
+      tempLocalizationThreshold: 0.6,
+      minimumLocalizationThreshold: 0.6,
       confidenceValid: true,
+      hasChangVersion: false,
     }
   },
   head() {
@@ -264,9 +308,15 @@ export default {
         }
         this.loading.message = 'Loading database...'
         this.loadDatabaseLocalStorage()
-        const confidence = localStorage.getItem('offline-ad-confidence')
-        // console.log(confidence, Number(confidence), Number.isNaN(Number(confidence)))
-        if (confidence !== null) this.minimumConfidence = Number(confidence)
+
+        if (this.hasChangVersion) {
+          this.loading.message = 'Re-generate database...'
+          this.reversionDatabase()
+        }
+        const clsThreshold = localStorage.getItem('offline-ad-classification-threshold')
+        if (clsThreshold !== null) this.minimumClassificationThreshold = Number(clsThreshold)
+        const llsThreshold = localStorage.getItem('offline-ad-localization-threshold')
+        if (llsThreshold !== null) this.minimumLocalizationThreshold = Number(llsThreshold)
       } catch (error) {
         console.error(error)
       } finally {
@@ -292,7 +342,7 @@ export default {
         console.log(workspaceElem.offsetWidth)
       }
     },
-    handleAddDatabase() {
+    async handleAddDatabase() {
       if (!this.$refs.database_form.validate()) return
       try {
         const create = JSON.parse(JSON.stringify(this.createDatabase))
@@ -300,22 +350,35 @@ export default {
         this.databaseUploading = true
         this.loading.message = 'Adding Image to database...'
         this.loading.show = true
-        const image = new Image()
-        image.onload = () => {
-          const result = this.getEmbedded(image)
-          const id = Date.now()
-          const color = seedColor(id).toHex()
-          this.databases.push({
-            id: Date.now(),
-            img: create.img,
-            label: create.label,
-            embedded: result,
-            color,
-          })
-          this.trainingModel(this.databases)
-          this.updateDatabaseLocalStorage(this.databases)
-        }
-        image.src = this.createDatabase.img
+        const image = await this.base64ToImage(this.createDatabase.img)
+        const result = this.getEmbedded(image)
+        const id = Date.now()
+        const color = seedColor(id).toHex()
+        this.databases.push({
+          id,
+          img: create.img,
+          label: create.label,
+          embedded: result,
+          color,
+        })
+        this.trainingModel(this.databases)
+        this.updateDatabaseLocalStorage(this.databases)
+        // const image = new Image()
+        // image.onload = () => {
+        //   const result = this.getEmbedded(image)
+        //   const id = Date.now()
+        //   const color = seedColor(id).toHex()
+        //   this.databases.push({
+        //     id: Date.now(),
+        //     img: create.img,
+        //     label: create.label,
+        //     embedded: result,
+        //     color,
+        //   })
+        //   this.trainingModel(this.databases)
+        //   this.updateDatabaseLocalStorage(this.databases)
+        // }
+        // image.src = this.createDatabase.img
       } catch (error) {
 
       } finally {
@@ -338,7 +401,7 @@ export default {
         console.error('remove database error', error)
       }
     },
-    async handleOnUploadPreview(base64, file) {
+    async handleOnUploadPreview(base64) {
       try {
         this.testUploading = true
         this.loading.message = 'Finding Offline advertise...'
@@ -355,7 +418,7 @@ export default {
     },
     async getOfflineAd(image) {
       // console.log(image)
-      const body = { image }
+      const body = { image, threshold: this.minimumLocalizationThreshold }
       const response = await this.$axios.$post('https://ad-detection-service-bxltsvmqda-as.a.run.app/ads/detection', body)
       // console.log(response)
       const items = await this.$refs.image_canvas.getImageData(response.objects)
@@ -383,6 +446,15 @@ export default {
       this.knn = { embedded, labels }
       // new KNN(embedded, labels, { k: 2, distance:  })
     },
+    base64ToImage(base64) {
+      return new Promise((resolve, reject) => {
+        const image = new Image()
+        image.onload = () => {
+          resolve(image)
+        }
+        image.src = base64
+      })
+    },
     getEmbedded(img) {
       const tensor = tf.browser.fromPixels(img).resizeNearestNeighbor([224, 224]).toFloat().div(tf.scalar(255)).expandDims()
       const result = this.embeddingModel.predict(tensor)
@@ -397,13 +469,13 @@ export default {
         const item = embedded[i]
         // const idx = labels[i]
         const cosim = cosineSimilarity(item, sample)
-        // console.log(cosim, this.queryDatabase(labels[i]))
+        console.log(cosim, this.queryDatabase(labels[i]))
         if (cosim > maxVal) {
           maxIdx = labels[i]
           maxVal = cosim
         }
       }
-      if (maxIdx === -1 || maxVal < this.minimumConfidence) return null
+      if (maxIdx === -1 || maxVal < this.minimumClassificationThreshold) return null
       const item = this.queryDatabase(maxIdx)
       return {
         id: maxIdx,
@@ -446,11 +518,13 @@ export default {
       try {
         const result = await this.$axios.$get('https://storage.googleapis.com/demo-ml-model/detection-offline-ad/version.json')
         const current = localStorage.getItem('detection-offline-ad-version')
+        this.hasChangVersion = false
 
         if (current !== result.version) {
           localStorage.removeItem('detection-offline-ad')
           window.indexedDB.deleteDatabase('detection-offline-ad')
           localStorage.setItem('detection-offline-ad-version', result.version)
+          this.hasChangVersion = true
         }
       } catch (error) {
         this.hasProblem = true
@@ -474,24 +548,60 @@ export default {
         console.error('update database error', error)
       }
     },
-    handleOnSetMinimumConfidence() {
-      this.tempMinimumConfidence = this.minimumConfidence
-      this.setMinimumConfidenceDialog = true
+    handleOnLocalizationThreshold() {
+      this.tempLocalizationThreshold = this.minimumLocalizationThreshold
+      this.localizationThresholdDialog = true
     },
-    handelOnSaveMinimumConfidence() {
+    handleOnClassificationThreshold() {
+      this.tempClassificationThreshold = this.minimumClassificationThreshold
+      this.classificationThresholdDialog = true
+    },
+    handelOnSaveClassificationThreshold() {
       try {
-        this.minimumConfidence = this.tempMinimumConfidence
-        this.setMinimumConfidenceDialog = false
-        localStorage.setItem('offline-ad-confidence', this.minimumConfidence)
+        this.minimumClassificationThreshold = this.tempClassificationThreshold
+        this.classificationThresholdDialog = false
+        localStorage.setItem('offline-ad-classification-threshold', this.minimumClassificationThreshold)
       } catch (error) {
         console.error('update minimum confidence error', error)
       }
     },
-    handleOnDecrement() {
-      this.tempMinimumConfidence -= 0.1
+    handleOnClassificationDecrement() {
+      this.tempClassificationThreshold -= 0.1
     },
-    handleOnIncrement() {
-      this.tempMinimumConfidence += 0.1
+    handleOnClassificationIncrement() {
+      this.tempClassificationThreshold += 0.1
+    },
+    handelOnSaveLocalizationThreshold() {
+      try {
+        this.minimumLocalizationThreshold = this.tempLocalizationThreshold
+        this.localizationThresholdDialog = false
+        console.log(this.minimumLocalizationThreshold)
+        localStorage.setItem('offline-ad-localization-threshold', this.minimumLocalizationThreshold)
+      } catch (error) {
+        console.error('update minimum confidence error', error)
+      }
+    },
+    handleOnLocalizationDecrement() {
+      this.tempLocalizationThreshold -= 0.1
+    },
+    handleOnLocalizationIncrement() {
+      this.tempLocalizationThreshold += 0.1
+    },
+    async reversionDatabase() {
+      // const db = localStorage.getItem('offline-ad-databases')
+      // if (!db) return
+      // const databases = JSON.parse(db)
+      for (const item of this.databases) {
+        const image = await this.base64ToImage(item.img)
+        item.embedded = this.getEmbedded(image)
+      }
+      // this.databases = databases
+      console.log('update reversion', this.databases)
+      this.trainingModel(this.databases)
+      this.updateDatabaseLocalStorage(this.databases)
+    },
+    handleOnDetectAgain() {
+      this.handleOnUploadPreview(this.testImg)
     }
   },
 }
