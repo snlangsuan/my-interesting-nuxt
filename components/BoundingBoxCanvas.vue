@@ -7,11 +7,12 @@
     >
       <v-layer ref="layer">
         <v-image ref="background" :config="imageConfig" />
-        <template v-for="(shp, i) in shapes">
+        <template v-for="shp in shapes">
           <v-rect
-            :key="'shape-' + i"
+            :key="'shape-' + shp.$id"
             :config="shp"
           />
+          <v-text :key="'text-' + shp.$id" :config="{ text: 'P' + (shp.$index + 1), x: shp.x + 4, y: shp.y + 4, fontSize: 14, fill: '#ffffff' }" />
         </template>
       </v-layer>
     </v-stage>
@@ -101,6 +102,8 @@ export default {
         fill: x.color,
         strokeWidth: 5,
         opacity: 0.6,
+        $index: x.$index,
+        $id: x.id,
       }))
       // console.log(items)
       this.shapes = items
@@ -133,7 +136,7 @@ export default {
         const _y = parseInt(Math.round(item.rectangle.y / yScale))
         const _width = parseInt(Math.round(item.rectangle.width / xScale))
         const _height = parseInt(Math.round(item.rectangle.height / yScale))
-        const img = await imgNode.toImage({ x: _x, y: _y, width: _width, height: _height })
+        const img = await imgNode.toImage({ x: _x, y: _y, width: _width, height: _height, mimeType: 'image/jpeg' })
         items.push(img)
       }
       return items

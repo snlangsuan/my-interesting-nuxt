@@ -8,12 +8,12 @@
       @dragenter="handelOnDragEnter"
       @dragleave="handleOnDragLeave"
     >
-      <input ref="picture_upload" type="file" alt="" title="" :accept="accept" @input="handelOnChangeFile" />
-      <div v-if="localVal" class="upload-field__image">
+      <input ref="picture_upload" type="file" alt="" title="" :accept="accept" :multiple="multiple" @input="handelOnChangeFile" />
+      <div v-if="!multiple && localVal.length === 1" class="upload-field__image">
         <div class="upload-field__image--remove">
           <v-icon color="white" @click="handelOnRemove">mdi-delete</v-icon>
         </div>
-        <v-img :src="localVal" class="grey lighten-4" width="100%" height="100%" contain />
+        <v-img v-if="!multiple && localVal.length === 1" :src="localVal[0]" class="grey lighten-4" width="100%" height="100%" contain />
       </div>
       <div v-else-if="isDragging" class="upload-field__drop-zone">
         <v-avatar color="#1967d2">
@@ -44,8 +44,10 @@ export default {
   },
   props: {
     value: {
-      type: String,
-      default: '',
+      type: Array,
+      default() {
+        return []
+      },
     },
     accept: {
       type: String,
@@ -57,11 +59,15 @@ export default {
         return [640, 640]
       }
     },
+    multiple: {
+      type: Boolean,
+      default: false,
+    }
   },
   data() {
     return {
-      localVal: '',
-      original: null,
+      localVal: [],
+      raws: [],
       fileCompressor: null,
       isDragging: false,
       processing: false
@@ -69,7 +75,7 @@ export default {
   },
   watch: {
     value(val) {
-      this.localVal = val
+      this.localVal = val || []
     },
   },
   mounted() {
@@ -98,8 +104,8 @@ export default {
     },
     reset() {
       this.valid = true
-      this.localVal = ''
-      this.original = null
+      this.localVal = []
+      this.raws = []
       this.errorBucket = []
       this.$emit('input', this.localVal)
     },
@@ -107,15 +113,15 @@ export default {
       this.valid = true
       this.errorBucket = []
     },
-    getFile() {
-      return this.original
+    getRaws() {
+      return this.raws
     },
     handelOnChangeFile() {
       this.onConvertImage()
     },
     handelOnDrop(e) {
       e.preventDefault()
-      if (this.disabled || !!this.localVal) return
+      if (this.disabled || this.localVal.length > 0) return
       this.isDragging = false
       const files = e.dataTransfer.files
       this.$refs.picture_upload.files = files
@@ -123,57 +129,74 @@ export default {
     },
     handelOnDragEnter(e) {
       e.preventDefault()
-      if (this.disabled || !!this.localVal) return
+      if (this.disabled || this.localVal.length > 0) return
       this.isDragging = true
     },
     handleOnDragLeave(e) {
-      if (this.disabled || !!this.localVal) return
+      if (this.disabled || this.localVal.length > 0) return
       this.isDragging = false
     },
     handleDragOver(e) {
-      if (this.disabled || !!this.localVal) return
+      if (this.disabled || this.localVal.length > 0) return
       e.preventDefault()
     },
-    onConvertImage() {
-      const input = this.$refs.picture_upload.files
-      if (!!input && input.length > 0) {
-        const file = input[0]
-        if (file.type !== 'image/jpeg') {
-          this.errorBucket.push('File not support')
-          this.valid = false
-          return
+    parseImage(file) {
+      return new Promise((resolve, reject) => {
+        let raw
+        const onImageLoaded = (e) => {
+          resolve([e.target.result, raw])
         }
-        this.processing = true
-        const onSuccess = (result) => {
+        const onCompressed = (result) => {
           const reader = new FileReader()
-          reader.onload = this.onRead
-          reader.readAsDataURL(result)
-          this.original = result
+          reader.onload = onImageLoaded
+          raw = result
+          reader.readAsDataURL(raw)
         }
+
         this.fileCompressor = new Compressor(file, {
           convertSize: 5000000,
           maxWidth: this.imageMaxDimension[0],
           maxHeight: this.imageMaxDimension[1],
-          success: onSuccess
+          success: onCompressed,
+          error: reject
         })
+      })
+    },
+    async onConvertImage() {
+      try {
+        let files = this.$refs.picture_upload.files
+        if (!this.multiple) files = [files[0]]
+        const accept = this.accept.split(',').map((x) => x.trim()).filter((x) => !!x)
+        const raws = []
+        const imgs = []
+        this.processing = true
+        for (const file of files) {
+          if (!accept.includes(file.type)) throw new Error('Some file not support')
+          const [img, raw] = await this.parseImage(file)
+          imgs.push(img)
+          raws.push(raw)
+        }
+        this.localVal = imgs
+        this.raws = raws
+        this.$refs.picture_upload.value = null
+        this.$refs.picture_upload.type = 'text'
+        this.$refs.picture_upload.type = 'file'
+        this.$emit('input', this.localVal)
+        this.$emit('change', this.localVal, this.raws)
+        this.validate(true, this.localVal)
+      } catch (error) {
+        console.error(error)
+        this.errorBucket[0] = error.message
+        this.valid = false
+      } finally {
+        this.processing = false
       }
     },
-    onRead(e) {
-      console.log('read')
-      this.localVal = e.target.result
-      this.$emit('input', this.localVal)
-      this.$emit('change', this.localVal, this.original)
-      this.$refs.picture_upload.value = null
-      this.$refs.picture_upload.type = 'text'
-      this.$refs.picture_upload.type = 'file'
-      this.validate(true, this.localVal)
-      this.processing = false
-    },
     handelOnRemove() {
-      this.localVal = ''
-      this.original = null
+      this.localVal = []
+      this.raws = []
       this.$emit('input', this.localVal)
-      this.$emit('change', this.localVal, this.original)
+      this.$emit('change', this.localVal, this.raws)
       this.validate(true, this.localVal)
     }
   }
@@ -197,7 +220,7 @@ export default {
     height: 240px;
     background-color: #E8F0FE;
     overflow: hidden;
-    z-index: 99;
+    z-index: 1;
     color: #1967d2 !important;
 
     & * {

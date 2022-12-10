@@ -43,6 +43,7 @@ export default {
   plugins: [
     '~/plugins/filter.js',
     { src: '~/plugins/konva.js', ssr: false, mode: 'client' },
+    { src: '~/plugins/tfjs.js', ssr: false, mode: 'client' },
   ],
 
   // Auto import components: https://go.nuxtjs.dev/config-components

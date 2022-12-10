@@ -1,137 +1,293 @@
 <template>
-  <div v-resize="onResize" class="ad-detection-page fill-height">
-    <div class="ad-detection__container">
-      <v-card>
-        <v-card-title class="py-2">
-          <div>Artwork</div>
-          <v-spacer />
-          <v-menu bottom left>
-            <template #activator="{ on, attrs }">
-              <v-btn icon v-bind="attrs" v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
-            </template>
-            <v-list>
-              <v-list-item @click="handleOnLocalizationThreshold">
-                <v-list-item-title>Localization threshold</v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="handleOnClassificationThreshold">
-                <v-list-item-title>Similarity threshold</v-list-item-title>
-              </v-list-item>
-              <v-list-item :disabled="databases.length < 1" @click="handleOnDeleteDatabase">
-                <v-list-item-title class="error--text">Delete Database</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </v-card-title>
-        <v-divider />
-        <v-card-text>
-          <div v-if="databases.length > 0">{{ databases.length }} Annotation</div>
-          <div v-else>Add Annotation:</div>
-          <div class="ad-detection-database">
-            <div class="ad-detection-upload-btn" @click="handleOnUploadDatabase">
-              <v-icon size="18">mdi-tray-arrow-up</v-icon>
-              <div class="ad-detection-upload-btn__text">Upload</div>
+  <div class="page__container">
+    <div class="page-database">
+      <div class="page-database__container">
+        <v-card>
+          <v-card-title class="py-2">
+            <v-btn
+              icon
+              small
+              :class="['mr-2', hideDatabase ? 'page-btn--up' : 'page-btn--down']"
+              @click="hideDatabase = !hideDatabase"
+            >
+              <v-icon>mdi-chevron-down</v-icon>
+            </v-btn>
+            <div>References</div>
+            <v-spacer />
+            <v-menu v-if="databases.length > 0 && samples.length < 1" bottom left>
+              <template #activator="{ on, attrs }">
+                <v-btn small icon v-bind="attrs" v-on="on"
+                  ><v-icon>mdi-dots-vertical</v-icon></v-btn
+                >
+              </template>
+              <v-list>
+                <v-list-item
+                  @click="handleOnResetReferences"
+                >
+                  <v-list-item-title>
+                    Reset References
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </v-card-title>
+          <v-card-text class="pa-0">
+            <div
+              :class="[
+                'page-database--expand',
+                { 'page-database--collapse': hideDatabase },
+              ]"
+            >
+              <!-- <button
+                :disabled="samples.length > 0"
+                class="page-database-upload-btn page-database-upload-btn--block"
+                style="margin-bottom: 8px"
+                @click="handleOnUploadDatabase"
+              >
+                <v-icon size="18">mdi-tray-arrow-up</v-icon>
+                <div class="page-database-upload-btn__text">Upload</div>
+              </button> -->
+              <div v-if="databases.length > 0">
+                {{ databases.length }} References <span v-if="samples.length > 0">(Disabled add/remove)</span>
+              </div>
+              <div v-else>Add Reference:</div>
+              <div class="page-database__content">
+                <button
+                  v-if="samples.length < 1"
+                  class="page-database-upload-btn"
+                  @click="handleOnUploadDatabase"
+                >
+                  <v-icon size="18">mdi-tray-arrow-up</v-icon>
+                  <div class="page-database-upload-btn__text">Upload</div>
+                </button>
+                <div class="page-database-list">
+                  <template v-for="item in databases">
+                    <div :key="item.id" class="page-database-item">
+                      <v-tooltip top>
+                        <template #activator="{ on, attrs }">
+                          <div v-bind="attrs" v-on="on">
+                            <v-img :src="item.img" width="100%" contain />
+                            <div v-if="samples.length < 1" class="page-database-item__remove">
+                              <v-btn icon small @click="handleOnRemoveReference(item.id)">
+                                <v-icon color="white">
+                                  mdi-close-circle
+                                </v-icon>
+                              </v-btn>
+                            </div>
+                          </div>
+                        </template>
+                        <span>{{ item.label }}</span>
+                      </v-tooltip>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
-            <div class="ad-detection-database-list">
-              <template v-for="item in databases">
-                  <div :key="item.id" class="ad-detection-database-item">
-                    <v-tooltip  top>
-                      <template #activator="{ on, attrs }">
-                        <div v-bind="attrs" v-on="on">
-                          <v-img :src="item.img" width="100%" contain />
-                          <div class="ad-detection-database-item__remove">
-                            <v-icon color="white" @click="handleOnRemoveDatabase(item.id)">mdi-close-circle</v-icon>
+          </v-card-text>
+        </v-card>
+      </div>
+    </div>
+
+    <div v-if="sampleUploaded" class="page-filter pt-2">
+      <div class="page-filter__container">
+        <v-card color="transparent" flat>
+          <v-card-title class="py-2">
+            <div class="text-body-2">{{ samples.length }} Images uploaded</div>
+            <v-spacer />
+            <v-tooltip bottom>
+              <template #activator="{ on, attrs }">
+                <v-icon
+                  icon
+                  v-bind="attrs"
+                  v-on="on"
+                  @click="handleOnResetSample"
+                >
+                  mdi-refresh
+                </v-icon>
+              </template>
+              <span>Reset</span>
+            </v-tooltip>
+            <v-btn
+              icon
+              small
+              :class="['ml-2', hideOptions ? 'page-btn--up' : 'page-btn--down']"
+              @click="hideOptions = !hideOptions"
+            >
+              <v-icon>mdi-chevron-down</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-card-text class="pa-0">
+            <div
+              :class="[
+                'page-filter--expand',
+                { 'page-filter--collapse': hideOptions },
+              ]"
+            >
+              <v-row dense>
+                <v-col cols="6">
+                  <div class="mb-1">Localization threshold ({{ minimumLocalizationThreshold | decimal }})</div>
+                  <v-slider v-model="minimumLocalizationThreshold" min="0" max="1" step="0.1" dense hide-details />
+                </v-col>
+                <v-col cols="6">
+                  <div class="mb-1">Similarity threshold ({{ minimumSimilarityThreshold | decimal }})</div>
+                  <v-slider v-model="minimumSimilarityThreshold" min="0" max="1" step="0.1" dense hide-details />
+                </v-col>
+              </v-row>
+              <v-row dense>
+                <v-col>
+                  <div class="mb-1">Labels</div>
+                  <v-chip-group
+                    v-model="viewLabels"
+                    column
+                    multiple
+                  >
+                    <template v-for="item in databases">
+                      <v-chip
+                        :key="'lb-' + item.id"
+                        :value="item.id"
+                        :color="item.color"
+                        filter
+                        outlined
+                        small
+                      >
+                        {{ item.label }}
+                      </v-chip>
+                    </template>
+                  </v-chip-group>
+                </v-col>
+              </v-row>
+            </div>
+          </v-card-text>
+        </v-card>
+      </div>
+    </div>
+
+    <div class="page-workspace pt-0">
+      <div
+        v-if="sampleUploaded"
+        class="page-workspace-list"
+        :style="{ maxHeight: contentHeight + 'px' }"
+      >
+        <template v-for="item in samples">
+          <div :key="'sample-' + item.id" class="page-workspace-item">
+            <v-card class="page-workspace-card">
+              <v-card-text>
+                <div
+                  class="page-workspace-card__content"
+                  :style="{ display: screenWidth > 560 ? 'flex' : 'block' }"
+                >
+                  <div class="page-workspace-card__canvas">
+                    <bounding-box-canvas
+                      ref="image_canvas"
+                      :src="item.image"
+                      :bboxes="filterBoxes(item.boxes)"
+                      :width="canvasWidth"
+                      :height="canvasHeight"
+                    />
+                  </div>
+                  <div class="page-workspace-card__output">
+                    <!-- <template v-for="item in filterBoxes(item.boxes)">
+                      <div :key="'output-' + item.id">{{ item }}</div>
+                    </template> -->
+                    <div :class="['page-workspace-boxes-results', screenWidth > 560 ? 'pl-4' : 'pt-4']" :style="{ maxHeight: canvasHeight + 'px' }">
+                      <div class="page-workspace-boxes__title">Predictions</div>
+                      <div class="page-workspace-boxes__subtitle" style="margin-bottom: 8px">{{ filterBoxes(item.boxes).length }} objects</div>
+                      <template v-for="(box, i) in filterBoxes(item.boxes)">
+                        <div :key="'output-' + item.id + '-' + i" class="page-workspace-boxes__item">
+                          <div class="page-workspace-boxes__color-box" :style="{ backgroundColor: box.color }">
+                            {{ 'P' + (box.$index + 1) }}
+                          </div>
+                          <div class="page-workspace-boxes__label">
+                            {{ box.object }}
+                          </div>
+                          <div class="page-workspace-boxes__percent">
+                            <v-progress-linear :value="box.score * 100" height="10" />
+                          </div>
+                          <div class="page-workspace-boxes__score">
+                            {{ Math.ceil(box.score * 100) }}%
                           </div>
                         </div>
                       </template>
-                      <span>{{ item.label }}</span>
-                    </v-tooltip>
-                  </div>
-              </template>
-            </div>
-          </div>
-        </v-card-text>
-      </v-card>
-      <v-card id="workspace" class="mt-4">
-        <v-card-title class="py-2">
-          <div>Preview</div>
-          <v-spacer />
-          <v-menu v-if="testImg" bottom left>
-            <template #activator="{ on, attrs }">
-              <v-btn icon v-bind="attrs" v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
-            </template>
-            <v-list>
-              <v-list-item :disabled="!testImg" @click="handleOnDetectAgain">
-                <v-list-item-title>Detect Again</v-list-item-title>
-              </v-list-item>
-              <v-list-item :disabled="!testImg" @click="handleOnDeletePreview">
-                <v-list-item-title class="error--text">Delete Preview</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </v-card-title>
-        <v-divider />
-        <v-card-text v-if="databases.length > 0 && !isPreviewUploaded">
-          <upload-image-field ref="upload_test" v-model="testImg" add-text="Click to upload" accept="image/jpeg" style="width: 100%" @change="handleOnUploadPreview" />
-        </v-card-text>
-        <v-card-text v-else-if="isPreviewUploaded">
-          <div class="ad-detection-workspace" :style="{ display: screenWidth > 560 ? 'flex' : 'block' }">
-            <div class="ad-detection-workspace__canvas">
-              <!-- <canvas id="workspace_canvas"></canvas> -->
-              <bounding-box-canvas ref="image_canvas" :src="testImg" :bboxes="bboxes" :width="canvasWidth" :height="canvasHeight" />
-            </div>
-            <div class="ad-detection-workspace__output">
-              <div v-if="!testUploading" :class="['ad-detection-results', screenWidth > 560 ? 'pl-4' : 'pt-4']" :style="{ maxHeight: canvasHeight + 'px' }">
-                <div class="ad-detection-results__title">Predictions</div>
-                <div class="ad-detection-results__subtitle" style="margin-bottom: 8px">{{ bboxes.length }} objects</div>
-                <template v-for="(item, i) in bboxes">
-                  <div :key="'res-' + i" class="ad-detection-results__item">
-                    <div class="ad-detection-results__color-box" :style="{ backgroundColor: item.color }" />
-                    <div class="ad-detection-results__label">
-                      {{ item.object }}
-                    </div>
-                    <div class="ad-detection-results__percent">
-                      <v-progress-linear :value="item.score * 100" height="18">
-                        <div style="width: 100%">
-                          <div class="white--text text-right" :style="{ width: Math.ceil(item.score * 100) + '%', paddingRight: '8px' }">{{ Math.ceil(item.score * 100) }}%</div>
-                        </div>
-                      </v-progress-linear>
                     </div>
                   </div>
-                </template>
-              </div>
-            </div>
+                </div>
+              </v-card-text>
+            </v-card>
           </div>
-        </v-card-text>
-        <v-card-text v-else>
-          You must add artwork on top panel before you can preview it here
-        </v-card-text>
-      </v-card>
+        </template>
+      </div>
+      <div v-else class="page-workspace-item">
+        <v-card class="mt-4">
+          <v-card-title class="py-2">Preview</v-card-title>
+          <v-divider />
+          <v-card-text v-if="databases.length < 1">
+            You must add artwork on top panel before you can preview it here
+          </v-card-text>
+          <v-card-text v-else>
+            <upload-image-field
+              ref="sample_upload"
+              v-model="uploads"
+              accept="image/jpeg"
+              style="width: 100%"
+              multiple
+              @change="handleOnSampleUpload"
+            />
+          </v-card-text>
+        </v-card>
+      </div>
     </div>
+
+    <div class="page-footer">
+      <div class="page-footer__text">version: {{ modelVersion }}</div>
+    </div>
+
     <v-dialog v-model="uploadDatabaseDialog" max-width="480" persistent>
       <v-card>
         <v-card-title>Add new artwork</v-card-title>
         <v-card-text class="pb-0">
-          <v-form ref="database_form" v-model="createDatabaseValid" @submit.prevent>
-            <v-text-field v-model="createDatabase.label" label="Label" :rules="[(x) => !!x || 'Enter label name', chkLabelDuplicate]" dense outlined />
-            <upload-image-field ref="upload_database" v-model="createDatabase.img" :rules="[(x) => !!x || 'Enter image']" add-text="Click to upload" accept="image/jpeg" style="width: 100%" />
+          <v-form
+            ref="database_form"
+            v-model="createDatabaseValid"
+            @submit.prevent
+          >
+            <v-text-field
+              v-model="createDatabase.label"
+              label="Label"
+              :rules="[(x) => !!x || 'Enter label name', chkLabelDuplicate]"
+              dense
+              outlined
+            />
+            <upload-image-field
+              ref="upload_database"
+              v-model="createDatabase.img"
+              :rules="[(x) => !!x || 'Enter image']"
+              add-text="Click to upload"
+              accept="image/jpeg"
+              style="width: 100%"
+            />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="uploadDatabaseDialog = false">cancel</v-btn>
-          <v-btn color="primary" text @click="handleAddDatabase">add</v-btn>
+          <v-btn color="primary" text @click="handleOnAddDatabase">add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
     <v-overlay v-model="loading.show">
-      <div class="ad-detection__overlay-box">{{ loading.message }}</div>
+      <div class="page__overlay-box">{{ loading.message }}</div>
     </v-overlay>
     <v-dialog v-model="hasProblem" max-width="640" persistent>
       <v-card>
         <v-card-text class="py-4 text-center">
-          <div class="py-3"><v-icon color="primary" size="48">mdi-connection</v-icon></div>
+          <div class="py-3">
+            <v-icon color="primary" size="48">mdi-connection</v-icon>
+          </div>
           <div class="text-h6">Something went wrong...</div>
-          <div class="text-body-2 pb-6">We are working on fixing the problem Please try again.</div>
+          <div class="text-body-2 pb-6">
+            We are working on fixing the problem Please try again.
+          </div>
           <v-btn color="primary" plain @click="handleOnReloadPage">
             <v-icon left>mdi-refresh</v-icon>
             Refresh Page
@@ -139,101 +295,15 @@
         </v-card-text>
       </v-card>
     </v-dialog>
-    <v-dialog v-model="classificationThresholdDialog" max-width="320" persistent>
-      <v-card>
-        <v-card-title>Classification Threshold</v-card-title>
-        <v-card-text class="pb-0">
-          <div class="text-h4 font-weight-light">
-            {{ tempClassificationThreshold }}
-          </div>
-          <v-slider v-model="tempClassificationThreshold" max="1" min="0" step="0.1" color="primary" track-color="grey" always-dirty hide-details>
-            <template #prepend>
-              <v-icon
-                color="primary"
-                @click="handleOnClassificationDecrement"
-              >
-                mdi-minus
-              </v-icon>
-            </template>
-
-            <template #append>
-              <v-icon
-                color="primary"
-                @click="handleOnClassificationIncrement"
-              >
-                mdi-plus
-              </v-icon>
-            </template>
-          </v-slider>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="classificationThresholdDialog = false">cancel</v-btn>
-          <v-btn color="primary" text @click="handelOnSaveClassificationThreshold">Save</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    <v-dialog v-model="localizationThresholdDialog" max-width="320" persistent>
-      <v-card>
-        <v-card-title>Localization Threshold</v-card-title>
-        <v-card-text class="pb-0">
-          <div class="text-h4 font-weight-light">
-            {{ tempLocalizationThreshold }}
-          </div>
-          <v-slider v-model="tempLocalizationThreshold" max="1" min="0" step="0.1" color="primary" track-color="grey" always-dirty hide-details>
-            <template #prepend>
-              <v-icon
-                color="primary"
-                @click="handleOnLocalizationDecrement"
-              >
-                mdi-minus
-              </v-icon>
-            </template>
-
-            <template #append>
-              <v-icon
-                color="primary"
-                @click="handleOnLocalizationIncrement"
-              >
-                mdi-plus
-              </v-icon>
-            </template>
-          </v-slider>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="localizationThresholdDialog = false">cancel</v-btn>
-          <v-btn color="primary" text @click="handelOnSaveLocalizationThreshold">Save</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <div class="page-temp-upload">
+      <bounding-box-canvas ref="temp_canvas" :src="tempImage" :bboxes="[]" :width="canvasWidth" :height="canvasHeight" />
+    </div>
   </div>
 </template>
 
 <script>
-import * as tf from '@tensorflow/tfjs'
 import seedColor from 'seed-color'
 import { cosineSimilarity } from '@/pages/ml/ad-detection/function/util'
-
-class L2 {
-  static className = 'L2'
-  constructor(config) {
-    return tf.regularizers.l1l2(config)
-  }
-}
-tf.serialization.registerClass(L2)
-
-class Lambda extends tf.layers.Layer {
-  constructor() {
-    super({})
-  }
-
-  static get className() {
-    return 'Lambda';
-  }
-}
-
-tf.serialization.registerClass(Lambda)
 export default {
   name: 'AdDetectionPage',
   layout: 'ml',
@@ -242,51 +312,54 @@ export default {
       title: 'Offline-advertising Detection',
       loading: {
         show: true,
-        message: 'Getting model version...'
+        message: 'Getting model version...',
       },
-      databases: [],
+      initializing: true,
+      hideDatabase: false,
+      hasChangVersion: false,
+      hasProblem: false,
+      hideOptions: false,
+      sampleUploaded: false,
+
       uploadDatabaseDialog: false,
       createDatabaseValid: true,
       createDatabase: {
         label: '',
-        img: ''
+        img: [],
       },
-      initializing: true,
-      databaseUploading: false,
-      testUploading: false,
-      isPreviewUploaded: false,
+
+      screenWidth: 0,
+      canvasWidth: 0,
+      canvasHeight: 0,
+      contentHeight: 0,
+
+      modelVersion: '0.0',
       embeddingModel: null,
-      screenWidth: 100,
-      canvasWidth: 100,
-      canvasHeight: 100,
-      testImg: null,
-      bboxes: [],
-      knn: null,
-      hasProblem: false,
-      classificationThresholdDialog: false,
-      tempClassificationThreshold: 0.7,
-      minimumClassificationThreshold: 0.7,
-      localizationThresholdDialog: false,
-      tempLocalizationThreshold: 0.6,
-      minimumLocalizationThreshold: 0.6,
-      confidenceValid: true,
-      hasChangVersion: false,
+
+      minimumSimilarityThreshold: 0.4,
+      minimumLocalizationThreshold: 0.7,
+      viewLabels: [],
+      databases: [],
+      samples: [],
+      uploads: [],
+
+      tempImage: null,
+      resizeObserver: null,
     }
   },
-  head() {
-      return {
-        title: this.title,
-      }
-  },
-  // watch: {
-  //   uploadDatabaseDialog(val) {
-  //     this.$nextTick(() => {
-  //       this.$refs.database_form.resetValidation()
-  //     })
-  //   },
-  // },
   mounted() {
     this.initialize()
+    if (!this.resizeObserver) this.resizeObserver = new ResizeObserver(this.onResize)
+    const databaseElem = document.querySelector('.page-database')
+    if (databaseElem) this.resizeObserver.observe(databaseElem)
+    const filterElem = document.querySelector('.page-filter')
+    if (filterElem) this.resizeObserver.observe(filterElem)
+  },
+  beforeDestroy() {
+    const databaseElem = document.querySelector('.page-database')
+    if (databaseElem && this.resizeObserver) this.resizeObserver.unobserve(databaseElem)
+    const filterElem = document.querySelector('.page-filter')
+    if (filterElem && this.resizeObserver) this.resizeObserver.unobserve(filterElem)
   },
   methods: {
     async initialize() {
@@ -298,10 +371,14 @@ export default {
         this.loading.message = 'Loading model...'
         const loadedModel = localStorage.getItem('detection-offline-ad')
         if (loadedModel) {
-          const model = await tf.loadLayersModel('indexeddb://detection-offline-ad')
+          const model = await this.$tfjs.loadLayersModel(
+            'indexeddb://detection-offline-ad'
+          )
           this.embeddingModel = model
         } else {
-          const model = await tf.loadLayersModel('https://storage.googleapis.com/demo-ml-model/detection-offline-ad/model.json')
+          const model = await this.$tfjs.loadLayersModel(
+            'https://storage.googleapis.com/demo-ml-model/detection-offline-ad/model.json'
+          )
           this.embeddingModel = model
           await model.save('indexeddb://detection-offline-ad')
           localStorage.setItem('detection-offline-ad', true)
@@ -313,10 +390,17 @@ export default {
           this.loading.message = 'Re-generate database...'
           this.reversionDatabase()
         }
-        const clsThreshold = localStorage.getItem('offline-ad-classification-threshold')
-        if (clsThreshold !== null) this.minimumClassificationThreshold = Number(clsThreshold)
-        const llsThreshold = localStorage.getItem('offline-ad-localization-threshold')
-        if (llsThreshold !== null) this.minimumLocalizationThreshold = Number(llsThreshold)
+        // const clsThreshold = localStorage.getItem(
+        //   'offline-ad-similarity-threshold'
+        // )
+        // if (clsThreshold !== null)
+        //   this.minimumSimilarityThreshold = Number(clsThreshold)
+        // const llsThreshold = localStorage.getItem(
+        //   'offline-ad-localization-threshold'
+        // )
+        // if (llsThreshold !== null)
+        //   this.minimumLocalizationThreshold = Number(llsThreshold)
+
       } catch (error) {
         console.error(error)
       } finally {
@@ -324,71 +408,82 @@ export default {
         this.loading.show = false
       }
     },
+    setResizeObserver() {
+      setTimeout(() => {
+        if (!this.resizeObserver) this.resizeObserver = new ResizeObserver(this.onResize)
+        const databaseElem = document.querySelector('.page-database')
+        if (databaseElem) this.resizeObserver.observe(databaseElem)
+        const filterElem = document.querySelector('.page-filter')
+        // console.log(filterElem)
+        if (filterElem) this.resizeObserver.observe(filterElem)
+      }, 200)
+    },
     onResize() {
-      const workspaceElem = document.querySelector('#workspace')
+      console.log('change size')
+      const databaseElem = document.querySelector('.page-database__container')
+      const workspaceElem = document.querySelector('.page-workspace')
       this.screenWidth = window.innerWidth
-      if (workspaceElem) {
-        const workspaceWidth = workspaceElem.offsetWidth - 32
+
+      if (databaseElem && workspaceElem) {
+        const contentWidth = databaseElem.offsetWidth - 32
         const percent = this.screenWidth > 560 ? 0.6 : 1
-        this.canvasWidth = Math.round(workspaceWidth * percent)
+        this.canvasWidth = Math.round(contentWidth * percent) - 32
         this.canvasHeight = this.canvasWidth
-      }
-      // const bodyWidth = window.innerWidth
-      // const contentWidth = bodyWidth >= 800 ? 800 - 32 :
-    },
-    resizeCanvas() {
-      const workspaceElem = document.querySelector('#workspace')
-      if (workspaceElem) {
-        console.log(workspaceElem.offsetWidth)
+
+        const screenHeight = window.innerHeight
+        const topHeight = workspaceElem.offsetTop
+        this.contentHeight = screenHeight - topHeight
+        console.log('height', screenHeight, this.contentHeight, topHeight, 'width', this.canvasWidth)
       }
     },
-    async handleAddDatabase() {
+    async handleOnAddDatabase() {
       if (!this.$refs.database_form.validate()) return
       try {
         const create = JSON.parse(JSON.stringify(this.createDatabase))
         this.uploadDatabaseDialog = false
-        this.databaseUploading = true
         this.loading.message = 'Adding Image to database...'
         this.loading.show = true
-        const image = await this.base64ToImage(this.createDatabase.img)
+        const image = await this.base64ToImage(this.createDatabase.img[0])
+        // console.log('img', image.src)
         const result = this.getEmbedded(image)
         const id = Date.now()
         const color = seedColor(id).toHex()
         this.databases.push({
           id,
-          img: create.img,
+          img: create.img[0],
           label: create.label,
           embedded: result,
           color,
         })
         this.trainingModel(this.databases)
         this.updateDatabaseLocalStorage(this.databases)
-        // const image = new Image()
-        // image.onload = () => {
-        //   const result = this.getEmbedded(image)
-        //   const id = Date.now()
-        //   const color = seedColor(id).toHex()
-        //   this.databases.push({
-        //     id: Date.now(),
-        //     img: create.img,
-        //     label: create.label,
-        //     embedded: result,
-        //     color,
-        //   })
-        //   this.trainingModel(this.databases)
-        //   this.updateDatabaseLocalStorage(this.databases)
-        // }
-        // image.src = this.createDatabase.img
+        this.viewLabels = this.databases.map((x) => x.id)
       } catch (error) {
-
+        console.error('add database error', error)
       } finally {
-        this.databaseUploading = false
-        this.createDatabase.img = null
-        this.createDatabase.label = ''
         this.loading.show = false
       }
     },
-    handleOnRemoveDatabase(id) {
+    handleOnUploadDatabase() {
+      this.createDatabase = {
+        label: '',
+        img: [],
+      }
+      this.uploadDatabaseDialog = true
+      this.$nextTick(() => {
+        this.$refs.database_form.reset()
+        this.$refs.database_form.resetValidation()
+      })
+    },
+    handleOnResetReferences() {
+      try {
+        this.databases = []
+        localStorage.removeItem('offline-ad-databases')
+      } catch (error) {
+        console.error('remove database', error)
+      }
+    },
+    handleOnRemoveReference(id) {
       if (!id) return
       try {
         const idx = this.databases.findIndex((x) => x.id === id)
@@ -401,50 +496,100 @@ export default {
         console.error('remove database error', error)
       }
     },
-    async handleOnUploadPreview(base64) {
+    handleOnReloadPage() {
+      window.location.reload()
+    },
+    handleOnResetSample() {
+      this.uploads = []
+      this.samples = []
+      this.sampleUploaded = false
+    },
+
+    filterBoxes(boxes) {
+      return boxes.filter((x) => {
+        return x.score >= this.minimumSimilarityThreshold && x.detection_confidence >= this.minimumLocalizationThreshold && this.viewLabels.includes(x.object_id)
+      })
+    },
+
+    async handleOnSampleUpload() {
       try {
-        this.testUploading = true
         this.loading.message = 'Finding Offline advertise...'
         this.loading.show = true
-        this.isPreviewUploaded = true
-        this.testImg = base64
-        await this.getOfflineAd(base64.split(',')[1])
+
+        const raws = this.$refs.sample_upload.getRaws()
+        const uploads = []
+        for (const i in this.uploads) {
+          this.loading.message = `${(Number(i) + 1)}/${this.uploads.length}\nFinding Offline advertise...`
+          const item = this.uploads[i]
+          const result = await this.getOfflineAdsApi(item)
+          uploads.push({ id: Date.now() + i, name: raws[i].name, image: item , boxes: result })
+        }
+        this.uploads = []
+        this.samples = uploads
+        this.sampleUploaded = true
+        this.setResizeObserver()
+        this.onResize()
       } catch (error) {
         console.error(error)
       } finally {
-        this.testUploading = false
         this.loading.show = false
       }
     },
-    async getOfflineAd(image) {
-      // console.log(image)
-      const body = { image, threshold: this.minimumLocalizationThreshold }
-      const response = await this.$axios.$post('https://ad-detection-service-bxltsvmqda-as.a.run.app/ads/detection', body)
-      // console.log(response)
-      const items = await this.$refs.image_canvas.getImageData(response.objects)
-      // console.log('count detected', items.length)
+
+    async getOfflineAdsApi(image) {
+      const body = { image: image.split(',')[1], threshold: 0 }
+      const response = await this.$axios.$post(
+        'https://ad-detection-service-bxltsvmqda-as.a.run.app/ads/detection',
+        body
+      )
+
+      const objects = response.objects
+      this.tempImage = image
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const items = await this.$refs.temp_canvas.getImageData(objects)
+      // console.log(items.map((x) => x.src))
       const boxes = []
-      // const colors = randomColor({ count: items.length, luminosity: 'dark' })
       for (const i in items) {
         const item = items[i]
+        const obj = objects[i]
         const embedded = this.getEmbedded(item)
         // embedded.push(result)
         const result = this.querySimilarity(embedded)
         if (result) {
-          boxes.push({ ...response.objects[i], object: result.label, score: result.score, color: result.color })
+          boxes.push({
+            ...response.objects[i],
+            object: result.label,
+            object_id: result.id,
+            score: result.score,
+            color: result.color,
+            detection_confidence: obj.confidence,
+            id: Date.now() + i,
+            $index: Number(i),
+          })
         }
       }
-      // if (this.knn) {
-      //   console.log(this.knn.predict(embedded))
-      // }
-      // console.log('boxes', boxes)
-      this.bboxes = boxes
+      return boxes
     },
-    trainingModel(train) {
-      const embedded = train.map((x) => x.embedded)
-      const labels = train.map((x) => x.id)
-      this.knn = { embedded, labels }
-      // new KNN(embedded, labels, { k: 2, distance:  })
+
+    loadDatabaseLocalStorage() {
+      try {
+        const db = localStorage.getItem('offline-ad-databases')
+        if (db) {
+          this.databases = JSON.parse(db)
+          this.viewLabels = this.databases.map((x) => x.id)
+          this.trainingModel(this.databases)
+        }
+      } catch (error) {
+        console.error('load database error', error)
+      }
+    },
+    async reversionDatabase() {
+      for (const item of this.databases) {
+        const image = await this.base64ToImage(item.img)
+        item.embedded = this.getEmbedded(image)
+      }
+      this.trainingModel(this.databases)
+      this.updateDatabaseLocalStorage(this.databases)
     },
     base64ToImage(base64) {
       return new Promise((resolve, reject) => {
@@ -456,67 +601,25 @@ export default {
       })
     },
     getEmbedded(img) {
-      const tensor = tf.browser.fromPixels(img).resizeNearestNeighbor([224, 224]).toFloat().div(tf.scalar(255)).expandDims()
+      const tensor = this.$tfjs.browser
+        .fromPixels(img)
+        .resizeNearestNeighbor([224, 224])
+        .toFloat()
+        .div(this.$tfjs.scalar(255))
+        .expandDims()
       const result = this.embeddingModel.predict(tensor)
       return result.arraySync()[0]
     },
-    querySimilarity(sample) {
-      const embedded = this.knn.embedded
-      const labels = this.knn.labels
-      let maxIdx = -1
-      let maxVal = 0
-      for (const i in  embedded) {
-        const item = embedded[i]
-        // const idx = labels[i]
-        const cosim = cosineSimilarity(item, sample)
-        console.log(cosim, this.queryDatabase(labels[i]))
-        if (cosim > maxVal) {
-          maxIdx = labels[i]
-          maxVal = cosim
-        }
-      }
-      if (maxIdx === -1 || maxVal < this.minimumClassificationThreshold) return null
-      const item = this.queryDatabase(maxIdx)
-      return {
-        id: maxIdx,
-        label: item?.label,
-        score: maxVal,
-        color: item?.color,
-      }
-    },
-    queryDatabase(id) {
-      return this.databases.find((x) => x.id === id)
-    },
-    handleOnDeletePreview() {
-      this.testImg = null
-      this.bboxes = []
-      this.isPreviewUploaded = false
-    },
-    handleOnDeleteDatabase() {
-      try {
-        this.databases = []
-        localStorage.removeItem('offline-ad-databases')
-      } catch (error) {
-        console.error('remove database', error)
-      }
-    },
-    handleOnUploadDatabase() {
-      this.uploadDatabaseDialog = true
-      this.$nextTick(() => {
-        this.$refs.database_form.reset()
-        this.$refs.database_form.resetValidation()
-      })
-    },
-    chkLabelDuplicate(label) {
-      const item = this.databases.find((x) => x.label === label)
-      return !item || 'Label already exists.'
-    },
-    handleOnReloadPage() {
-      window.location.reload()
+    trainingModel(train) {
+      const embedded = train.map((x) => x.embedded)
+      const labels = train.map((x) => x.id)
+      this.knn = { embedded, labels }
     },
     async getModelVersion() {
       try {
-        const result = await this.$axios.$get('https://storage.googleapis.com/demo-ml-model/detection-offline-ad/version.json')
+        const result = await this.$axios.$get(
+          'https://storage.googleapis.com/demo-ml-model/detection-offline-ad/version.json'
+        )
         const current = localStorage.getItem('detection-offline-ad-version')
         this.hasChangVersion = false
 
@@ -526,20 +629,17 @@ export default {
           localStorage.setItem('detection-offline-ad-version', result.version)
           this.hasChangVersion = true
         }
+        this.modelVersion = result.version
       } catch (error) {
         this.hasProblem = true
       }
     },
-    loadDatabaseLocalStorage() {
-      try {
-        const db = localStorage.getItem('offline-ad-databases')
-        if (db) {
-          this.databases = JSON.parse(db)
-          this.trainingModel(this.databases)
-        }
-      } catch (error) {
-        console.error('load database error', error)
-      }
+    chkLabelDuplicate(label) {
+      const item = this.databases.find((x) => x.label === label)
+      return !item || 'Label already exists.'
+    },
+    queryDatabase(id) {
+      return this.databases.find((x) => x.id === id)
     },
     updateDatabaseLocalStorage(databases) {
       try {
@@ -548,76 +648,139 @@ export default {
         console.error('update database error', error)
       }
     },
-    handleOnLocalizationThreshold() {
-      this.tempLocalizationThreshold = this.minimumLocalizationThreshold
-      this.localizationThresholdDialog = true
-    },
-    handleOnClassificationThreshold() {
-      this.tempClassificationThreshold = this.minimumClassificationThreshold
-      this.classificationThresholdDialog = true
-    },
-    handelOnSaveClassificationThreshold() {
-      try {
-        this.minimumClassificationThreshold = this.tempClassificationThreshold
-        this.classificationThresholdDialog = false
-        localStorage.setItem('offline-ad-classification-threshold', this.minimumClassificationThreshold)
-      } catch (error) {
-        console.error('update minimum confidence error', error)
+    querySimilarity(sample) {
+      const embedded = this.knn.embedded
+      const labels = this.knn.labels
+      let maxIdx = -1
+      let maxVal = 0
+      for (const i in embedded) {
+        const item = embedded[i]
+        const cosim = cosineSimilarity(item, sample)
+        if (cosim > maxVal) {
+          maxIdx = labels[i]
+          maxVal = cosim
+        }
+      }
+      if (maxIdx === -1 || maxVal < 0)
+        return null
+      const item = this.queryDatabase(maxIdx)
+      return {
+        id: maxIdx,
+        label: item?.label,
+        score: maxVal,
+        color: item?.color,
       }
     },
-    handleOnClassificationDecrement() {
-      this.tempClassificationThreshold -= 0.1
-    },
-    handleOnClassificationIncrement() {
-      this.tempClassificationThreshold += 0.1
-    },
-    handelOnSaveLocalizationThreshold() {
-      try {
-        this.minimumLocalizationThreshold = this.tempLocalizationThreshold
-        this.localizationThresholdDialog = false
-        console.log(this.minimumLocalizationThreshold)
-        localStorage.setItem('offline-ad-localization-threshold', this.minimumLocalizationThreshold)
-      } catch (error) {
-        console.error('update minimum confidence error', error)
-      }
-    },
-    handleOnLocalizationDecrement() {
-      this.tempLocalizationThreshold -= 0.1
-    },
-    handleOnLocalizationIncrement() {
-      this.tempLocalizationThreshold += 0.1
-    },
-    async reversionDatabase() {
-      // const db = localStorage.getItem('offline-ad-databases')
-      // if (!db) return
-      // const databases = JSON.parse(db)
-      for (const item of this.databases) {
-        const image = await this.base64ToImage(item.img)
-        item.embedded = this.getEmbedded(image)
-      }
-      // this.databases = databases
-      console.log('update reversion', this.databases)
-      this.trainingModel(this.databases)
-      this.updateDatabaseLocalStorage(this.databases)
-    },
-    handleOnDetectAgain() {
-      this.handleOnUploadPreview(this.testImg)
-    }
   },
 }
 </script>
 
 <style lang="scss" scoped>
-.ad-detection {
-  &-page {
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.page {
+  &-btn {
+    &--up {
+      transform: rotate(-180deg);
+    }
+    &--down {
+      transform: rotate(0deg);
+    }
+  }
+  &__container {
+    height: 100%;
+    // max-width: 800px;
+    width: 100%;
+    margin: auto;
+  }
+  &-database,
+  &-filter,
+  &-workspace {
+    padding-top: 24px;
+    // padding-left: 16px;
+    // padding-right: 16px;
+  }
+
+  &-database__container,
+  &-filter__container,
+  &-workspace-item {
+    width: 100%;
+    max-width: 800px;
+    margin: auto;
+    padding-left: 16px;
+    padding-right: 16px;
   }
   &-database {
-    padding-top: 8px;
-    display: flex;
+
+    &--collapse {
+      height: 0 !important;
+      opacity: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    &--expand {
+      border-top: thin solid rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+      height: 120px;
+      padding: 16px;
+      transition: height 0.5s, padding 0.5s;
+    }
+
+    &__content {
+      padding-top: 8px;
+      display: flex;
+    }
+
+    &-upload-btn {
+      width: 72px;
+      height: 58px;
+      padding: 4px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #e8f0fe;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+
+      &--block {
+        width: 100%;
+        height: 32px;
+        flex-direction: row;
+
+        & > .v-icon {
+          margin-right: 4px;
+        }
+      }
+
+      & > input {
+        display: none;
+      }
+
+      & > i,
+      & > &__text {
+        color: #1967d2;
+      }
+
+      & > &__text {
+        font-size: 0.8rem;
+      }
+
+      &:hover {
+        background-color: #d2e3fc;
+      }
+
+      $btn-upload: &;
+      &:disabled {
+        background-color: #eeeeee;
+        cursor: not-allowed;
+
+        & > i,
+        & > #{$btn-upload}__text {
+          color: #888888 !important;
+        }
+      }
+    }
 
     &-list {
       overflow: hidden;
@@ -654,17 +817,121 @@ export default {
     }
   }
 
-  &-workspace {
-    display: flex;
-
-    &__canvas {
-      flex: 0;
+  &-filter {
+    &--collapse {
+      height: 0 !important;
+      opacity: 0 !important;
+      padding: 0 !important;
     }
 
-    &__output {
-      flex: 1;
+    &--expand {
+      overflow: hidden;
+      height: 164px;
+      padding: 16px;
+      transition: height 0.5s, padding 0.5s;
     }
   }
+
+  &-workspace {
+
+    &-list {
+      overflow: hidden;
+      overflow-y: auto;
+      padding-bottom: 16px;
+      padding-top: 16px;
+    }
+
+    &-card {
+      &__content {
+        display: flex;
+      }
+
+      &__canvas {
+        flex: 0;
+      }
+
+      &__output {
+        flex: 1;
+      }
+    }
+
+    &-list > &-item + &-item {
+      margin-top: 16px;
+    }
+
+    &-boxes {
+      &-results {
+        overflow: hidden;
+        overflow-y: auto;
+      }
+
+      &__title {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+
+      &__item {
+        display: flex;
+        align-items: center;
+        padding: 16px 0;
+      }
+      &__color-box {
+        width: 22px;
+        height: 22px;
+        min-height: 100%;
+        margin-right: 8px;
+        // align-self: stretch;
+        font-size: 0.65rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+      }
+
+      &__label {
+        margin-right: 8px;
+        max-width: 30%;
+        width: 30%;
+        font-size: 0.8rem;
+      }
+
+      &__percent {
+        flex: 1;
+      }
+
+      &__score {
+        padding-left: 8px;
+        font-size: 0.8rem;
+      }
+    }
+  }
+
+  &-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+
+    &__text {
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: #aaa;
+    }
+  }
+
+  &-temp-upload {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+
   &__overlay-box {
     min-width: 320px;
     text-align: center;
@@ -672,72 +939,17 @@ export default {
     padding: 32px 16px;
     color: #212121;
     border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
   }
-  &__container {
-    max-width: 800px;
-    width: 100%;
-    margin: auto;
-  }
-  &-upload-btn {
-    width: 72px;
-    height: 58px;
-    padding: 4px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: #E8F0FE;
-    border-radius: 4px;
-    cursor: pointer;
-    position: relative;
+}
 
-    & > input {
-      display: none;
-    }
-
-    & > i,
-    & > &__text {
-      color: #1967d2;
-    }
-
-    & > &__text {
-      font-size: 0.8rem;
-    }
-
-    &:hover {
-      background-color: #D2E3FC;
-    }
-  }
-  &-results {
-    overflow: hidden;
-    overflow-y: auto;
-    // margin-left: 16px;
-
-    &__title {
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-
-    &__item {
-      display: flex;
-      align-items: center;
-      padding: 16px 0;
-    }
-    &__color-box {
-      width: 5px;
-      min-height: 100%;
-      margin-right: 8px;
-      align-self: stretch;
-    }
-
-    &__label {
-      margin-right: 8px;
-      max-width: 30%;
-      width: 30%;
-    }
-
-    &__percent {
-      flex: 1;
+@media screen and (max-width: 320px) {
+  .page {
+    &-database {
+      &--expand {
+        height: 161px;
+      }
     }
   }
 }
