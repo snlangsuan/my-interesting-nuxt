@@ -1,0 +1,1 @@
+__NUXT_JSONP__("manifest.js", {routes:["\u002Fml\u002Fad-detection\u002Findex2","\u002Fml\u002Fad-detection","\u002Fml\u002Fautocomplete"]})
