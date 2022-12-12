@@ -125,13 +125,13 @@ export default {
         height: srcHeight * ratio
       }
     },
-    async getImageData(position) {
+    async getImageDataBoxes(positions) {
       const imgNode = this.$refs.background.getNode()
       const xScale = imgNode.width() / this.stageConfig.width
       const yScale = imgNode.height() / this.stageConfig.height
 
       const items = []
-      for (const item of position) {
+      for (const item of positions) {
         const _x = parseInt(Math.round(item.rectangle.x / xScale))
         const _y = parseInt(Math.round(item.rectangle.y / yScale))
         const _width = parseInt(Math.round(item.rectangle.width / xScale))
@@ -140,6 +140,11 @@ export default {
         items.push(img)
       }
       return items
+    },
+    async getDataURL() {
+      const stageNode = this.$refs.stage.getNode()
+      const img = await stageNode.toDataURL({ x: 0, y: 0, width: this.stageConfig.width, height: this.stageConfig.height, mimeType: 'image/jpeg' })
+      return img
     },
     reset() {
       this.imageConfig.image = null

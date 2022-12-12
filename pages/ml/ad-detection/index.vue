@@ -98,6 +98,20 @@
               <template #activator="{ on, attrs }">
                 <v-icon
                   icon
+                  class="mr-3"
+                  v-bind="attrs"
+                  v-on="on"
+                  @click="handleOnExport"
+                >
+                  mdi-printer-outline
+                </v-icon>
+              </template>
+              <span>Export</span>
+            </v-tooltip>
+            <v-tooltip bottom>
+              <template #activator="{ on, attrs }">
+                <v-icon
+                  icon
                   v-bind="attrs"
                   v-on="on"
                   @click="handleOnResetSample"
@@ -178,7 +192,7 @@
                 >
                   <div class="page-workspace-card__canvas">
                     <bounding-box-canvas
-                      ref="image_canvas"
+                      :ref="'image_canvas_' + item.id"
                       :src="item.image"
                       :bboxes="filterBoxes(item.boxes)"
                       :width="canvasWidth"
@@ -298,6 +312,32 @@
     <div class="page-temp-upload">
       <bounding-box-canvas ref="temp_canvas" :src="tempImage" :bboxes="[]" :width="canvasWidth" :height="canvasHeight" />
     </div>
+
+    <client-only>
+      <vue-html2pdf
+        ref="export_pdf"
+        :show-layout="false"
+        :float-layout="true"
+        :enable-download="false"
+        :preview-modal="false"
+        :pdf-quality="4"
+        :manual-pagination="true"
+        :paginate-elements-by-height="1100"
+        pdf-content-width="800px"
+        pdf-format="a4"
+        pdf-orientation="portrait"
+        :html-to-pdf-options="htmlToPdfOptions"
+        @beforeDownload="handleOnPdfGenerate"
+      >
+        <offline-ads-pdf-content
+          slot="pdf-content"
+          :title="title"
+          :min-localization="minimumLocalizationThreshold"
+          :min-similarity="minimumSimilarityThreshold"
+          :items="reportItems"
+        />
+      </vue-html2pdf>
+    </client-only>
   </div>
 </template>
 
@@ -345,6 +385,32 @@ export default {
 
       tempImage: null,
       resizeObserver: null,
+
+      reportItems: [],
+
+      htmlToPdfOptions: {
+        margin: 0,
+
+        image: {
+          type: 'jpeg',
+          quality: 1
+        },
+
+        enableLinks: false,
+
+        html2canvas: {
+          dpi: 192,
+          scale:4,
+          letterRendering: true,
+          useCORS: true
+        },
+
+        jsPDF: {
+          unit: 'in',
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      }
     }
   },
   mounted() {
@@ -504,6 +570,34 @@ export default {
       this.samples = []
       this.sampleUploaded = false
     },
+    async handleOnExport() {
+      this.loading.message = 'Preparing data...'
+      this.loading.show = true
+      const reportItems = []
+      for (const i in this.samples) {
+        const item = this.samples[i]
+        const img = await this.$refs['image_canvas_' + item.id][0].getDataURL()
+        reportItems.push({
+          no: Number(i) + 1,
+          id: item.id,
+          img,
+          boxes: this.filterBoxes(item.boxes)
+        })
+      }
+      this.reportItems = reportItems
+      setTimeout(() => {
+        this.$refs.export_pdf.generatePdf()
+      }, 300)
+      // this.$refs.export_pdf.generatePdf()
+    },
+
+    async handleOnPdfGenerate({ html2pdf, options, pdfContent }) {
+      const blob = await html2pdf().set(options).from(pdfContent).outputPdf('blob', 'my-invoice.pdf')
+      const fileURL = URL.createObjectURL(blob)
+      window.open(fileURL);
+      // console.log(blob)
+      this.loading.show = false
+    },
 
     filterBoxes(boxes) {
       return boxes.filter((x) => {
@@ -546,7 +640,7 @@ export default {
       const objects = response.objects
       this.tempImage = image
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      const items = await this.$refs.temp_canvas.getImageData(objects)
+      const items = await this.$refs.temp_canvas.getImageDataBoxes(objects)
       // console.log(items.map((x) => x.src))
       const boxes = []
       for (const i in items) {
@@ -873,7 +967,7 @@ export default {
       &__item {
         display: flex;
         align-items: center;
-        padding: 16px 0;
+        padding: 8px 0;
       }
       &__color-box {
         width: 22px;
