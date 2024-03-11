@@ -492,8 +492,8 @@ export default {
         }
       })
       await model.fit(features, labels, {
-        epochs: this.params.epochs,
-        batchSize: this.params.batchSize,
+        epochs: Number(this.params.epochs),
+        batchSize: Number(this.params.batchSize),
         shuffle: true,
         callbacks: customCallback
       })
